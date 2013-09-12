@@ -134,7 +134,7 @@ Ink.createModule('Ink.Dom.FormSerialize', 1, [], function () {
                             }
                         }
                     }
-                    return ((fieldInputs.length > 1) ? res : res[0]);
+                    return (fieldInputs.length > 0 && /\[[^\]]*\]$/.test(fieldInputs[0].getAttribute('name'))) ? res : res[0]);
 
                 case 'textarea':
                 case 'input':
