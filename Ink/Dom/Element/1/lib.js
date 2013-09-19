@@ -576,10 +576,31 @@ Ink.createModule('Ink.Dom.Element', 1, [], function() {
          * @return {Array} array with element's width and height
          */
         elementDimensions: function(element) {
-            if(typeof element === "string") {
-                element = document.getElementById(element);
-            }
+            element = Ink.i(element);
             return Array(element.offsetWidth, element.offsetHeight);
+        },
+
+        /**
+         * Check whether an element is inside the viewport
+         *
+         * @method inViewport
+         * @param {DOMElement} element Element to check
+         * @param {Boolean} [partial=false] Return `true` even if it is only partially visible.
+         * @return {Boolean}
+         */
+        inViewport: function (element, partial) {
+            var rect = Ink.i(element).getBoundingClientRect();
+            if (partial) {
+                return  rect.bottom > 0                        && // from the top
+                        rect.left < Element.viewportWidth()    && // from the right
+                        rect.top < Element.viewportHeight()    && // from the bottom
+                        rect.right  > 0;                          // from the left
+            } else {
+                return  rect.top > 0                           && // from the top
+                        rect.right < Element.viewportWidth()   && // from the right
+                        rect.bottom < Element.viewportHeight() && // from the bottom
+                        rect.left  > 0;                           // from the left
+            }
         },
 
         /**
@@ -616,72 +637,88 @@ Ink.createModule('Ink.Dom.Element', 1, [], function() {
         },
 
         /**
-         * Searches up the DOM tree for an element of specified class name.
+         * Searches up the DOM tree for an element fulfilling the boolTest function (returning trueish)
          *
-         * If the target `element` already has the required `className`, it is returned.
+         * @function findUpwardsHaving
+         * @param {HtmlElement} element
+         * @param {Function}    boolTest
+         * @return {HtmlElement|false} the matched element or false if did not match
+         */
+        findUpwardsHaving: function(element, boolTest) {
+            while (element && element.nodeType === 1) {
+                if (boolTest(element)) {
+                    return element;
+                }
+                element = element.parentNode;
+            }
+            return false;
+        },
+
+        /**
+         * Śearches up the DOM tree for an element of specified class name
          *
          * @function findUpwardsByClass
-         * @param {DOMElement}  element
+         * @param {HtmlElement} element
          * @param {String}      className
-         * @return {DOMElement|Boolean} the found element or false
+         * @returns {HtmlElement|false} the matched element or false if did not match
          */
         findUpwardsByClass: function(element, className) {
             var re = new RegExp("(^|\\s)" + className + "(\\s|$)");
-            while (true) {
-                if (typeof(element.className) !== 'undefined' && re.test(element.className)) {
-                    return element;
-                }
-                else {
-                    element = element.parentNode;
-                    if (!element || element.nodeType !== 1) {
-                        return false;
-                    }
-                }
-            }
+            var tst = function(el) {
+                var cls = el.className;
+                return cls && re.test(cls);
+            };
+            return this.findUpwardsHaving(element, tst);
         },
 
         /**
-         * Searches up the DOM tree for an element of specified tag name
+         * Śearches up the DOM tree for an element of specified tag
          *
          * @function findUpwardsByTag
-         * @param {DOMElement}  element
+         * @param {HtmlElement} element
          * @param {String}      tag
-         * @return {DOMElement|Boolean} the found element or false
+         * @returns {HtmlElement|false} the matched element or false if did not match
          */
         findUpwardsByTag: function(element, tag) {
-            while (true) {
-                if (element && element.nodeName.toUpperCase() === tag.toUpperCase()) {
-                    return element;
-                } else {
-                    element = element.parentNode;
-                    if (!element || element.nodeType !== 1) {
-                        return false;
-                    }
-                }
-            }
+            tag = tag.toUpperCase();
+            var tst = function(el) {
+                return el.nodeName && el.nodeName.toUpperCase() === tag;
+            };
+            return this.findUpwardsHaving(element, tst);
         },
 
         /**
-         * Searches up the DOM tree for an element with the given id
+         * Śearches up the DOM tree for an element of specified id
          *
          * @function findUpwardsById
-         * @param {DOMElement}  element
+         * @param {HtmlElement} element
          * @param {String}      id
-         * @return {DOMElement|Boolean} the found element or false
+         * @returns {HtmlElement|false} the matched element or false if did not match
          */
         findUpwardsById: function(element, id) {
-            while (true) {
-                if (typeof(element.id) !== 'undefined' && element.id === id) {
-                    return element;
-                } else {
-                    element = element.parentNode;
-                    if (!element || element.nodeType !== 1) {
-                        return false;
-                    }
-                }
-            }
+            var tst = function(el) {
+                return el.id === id;
+            };
+            return this.findUpwardsHaving(element, tst);
         },
 
+        /**
+         * Śearches up the DOM tree for an element matching the given selector
+         *
+         * @function findUpwardsBySelector
+         * @param {HtmlElement} element
+         * @param {String}      sel
+         * @returns {HtmlElement|false} the matched element or false if did not match
+         */
+        findUpwardsBySelector: function(element, sel) {
+            if (typeof Ink.Dom === 'undefined' || typeof Ink.Dom.Selector === 'undefined') {
+                throw new Error('This method requires Ink.Dom.Selector');
+            }
+            var tst = function(el) {
+                return Ink.Dom.Selector.matchesSelector(el, sel);
+            };
+            return this.findUpwardsHaving(element, tst);
+        },
 
         /**
          * Returns trimmed text content of descendants
@@ -1256,78 +1293,39 @@ Ink.createModule('Ink.Dom.Element', 1, [], function() {
          * @param {String|DomElement} selector Element or CSS selector
          * @return {Object} Object with the data-* properties. If no data-attributes are present, an empty object is returned.
         */
-        data: function( selector ){
-            if( typeof selector !== 'object' && typeof selector !== 'string'){
+        data: function(selector) {
+            var el;
+            if (typeof selector !== 'object' && typeof selector !== 'string') {
                 throw '[Ink.Dom.Element.data] :: Invalid selector defined';
             }
 
-            if( typeof selector === 'object' ){
-                //this._element = selector;
-                var _element = selector;
-            } else {
+            if (typeof selector === 'object') {
+                el = selector;
+            }
+            else {
                 var InkDomSelector = Ink.getModule('Ink.Dom.Selector', 1);
-                if(!InkDomSelector) {
+                if (!InkDomSelector) {
                     throw "[Ink.Dom.Element.data] :: This method requires Ink.Dom.Selector - v1";
                 }
-                //this._element = InkDomSelector.select( selector );
-                var _element = InkDomSelector.select( selector );
-                if( _element.length <= 0) {
+                el = InkDomSelector.select(selector);
+                if (el.length <= 0) {
                     throw "[Ink.Dom.Element.data] :: Can't find any element with the specified selector";
                 }
-                //this._element = this._element[0];
-                _element = _element[0];
+                el = el[0];
             }
 
             var dataset = {};
-            // var attributesElements = _element.dataset || _element.attributes || {};
-            var attributesElements = _element.attributes || [];
-            var prop ;
+            var attrs = el.attributes || [];
 
             var curAttr, curAttrName, curAttrValue;
-            // if(_element.dataset) {
-            //     for( prop in attributesElements ){
-            //         if(attributesElements.hasOwnProperty && attributesElements.hasOwnProperty(prop)) {
-            //             //if(typeof(attributesElements[prop]) === 'object') {
-            //             dataset[prop] = attributesElements[prop];
-            //             //}
-            //         }
-            //     }
-            // } else {
-            if( attributesElements ){
-                for(var i=0, total=attributesElements.length; i < total; i++){
-                    curAttrName = attributesElements[i].name;
-                    curAttrValue = attributesElements[i].value;
-                    if(curAttrName && curAttrName.indexOf('data-') === 0) {
+            if (attrs) {
+                for (var i = 0, total = attrs.length; i < total; ++i) {
+                    curAttr = attrs[i];
+                    curAttrName = curAttr.name;
+                    curAttrValue = curAttr.value;
+                    if (curAttrName && curAttrName.indexOf('data-') === 0) {
                         dataset[this._camelCase(curAttrName.replace('data-', ''))] = curAttrValue;
                     }
-                    /*
-                       if(attributesElements.hasOwnProperty && attributesElements.hasOwnProperty(prop)) {
-                       if( typeof attributesElements[prop] === 'undefined' ){
-                       continue;
-                       } else if( typeof attributesElements[prop] === 'object' ){
-                       prop = attributesElements[prop].name || prop;
-                       if(
-                       ( ( attributesElements[prop].name || attributesElements[prop].nodeValue ) && ( prop.indexOf('data-') !== 0 ) ) ||
-                       !( attributesElements[prop].nodeValue || attributesElements[prop].value || attributesElements[prop] )
-                       ){
-                       continue;
-                       }
-                       }
-
-                       propName = prop.replace('data-','');
-                       if( propName.indexOf('-') !== -1 ){
-                       propName = propName.split("-");
-                       for( i=1; i<propName.length; i+=1 ){
-                       propName[i] = propName[i].substr(0,1).toUpperCase() + propName[i].substr(1);
-                       }
-                       propName = propName.join('');
-                       }
-                       dataset[propName] = attributesElements[prop].nodeValue || attributesElements[prop].value || attributesElements[prop];
-                       if( dataset[propName] === "true" || dataset[propName] === "false" ){
-                       dataset[propName] = ( dataset[propName] === 'true' );
-                       }
-                       }
-                     */
                 }
             }
 

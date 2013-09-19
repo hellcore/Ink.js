@@ -13,7 +13,7 @@
     "eqeqeq":        true,
   	"es5":           false,
     "evil":          true,
-    "forin":         false,
+    "forin":         true,
     "immed":         true,
     "laxbreak":      true,
     "newcap":        false,

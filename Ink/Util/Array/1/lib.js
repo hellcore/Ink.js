@@ -7,6 +7,8 @@ Ink.createModule('Ink.Util.Array', '1', [], function() {
 
     'use strict';
 
+    var arrayProto = Array.prototype;
+
     /**
      * Utility functions to use with Arrays
      *
@@ -146,7 +148,7 @@ Ink.createModule('Ink.Util.Array', '1', [], function() {
         /**
          * Runs a function through each of the elements of an array
          *
-         * @method each
+         * @method forEach
          * @param {Array} arr Array to be cycled/iterated
          * @param {Function} cb The function receives as arguments the value, index and array.
          * @return {Array} Array iterated.
@@ -155,36 +157,77 @@ Ink.createModule('Ink.Util.Array', '1', [], function() {
          * @example
          *     Ink.requireModules(['Ink.Util.Array_1'], function( InkArray ){
          *         var testArray = [ 'value1', 'value2', 'value3', 'value2' ];
-         *         InkArray.each( testArray, function( value, index, arr ){
+         *         InkArray.forEach( testArray, function( value, index, arr ){
          *             console.log( 'The value is: ' + value + ' | The index is: ' + index );
          *         });
          *     });
          */
-        each: function(arr, cb) {
-            var arrCopy    = arr.slice(0),
-                total      = arrCopy.length,
-                iterations = Math.floor(total / 8),
-                leftover   = total % 8,
-                i          = 0;
-
-            if (leftover > 0) { // Duff's device pattern
-                do {
-                    cb(arrCopy[i++], i-1, arr);
-                } while (--leftover > 0);
+        forEach: function(array, callback, context) {
+            if (arrayProto.forEach) {
+                return arrayProto.forEach.call(array, callback, context);
             }
-            if (iterations === 0) { return arr; }
-            do {
-                cb(arrCopy[i++], i-1, arr);
-                cb(arrCopy[i++], i-1, arr);
-                cb(arrCopy[i++], i-1, arr);
-                cb(arrCopy[i++], i-1, arr);
-                cb(arrCopy[i++], i-1, arr);
-                cb(arrCopy[i++], i-1, arr);
-                cb(arrCopy[i++], i-1, arr);
-                cb(arrCopy[i++], i-1, arr);
-            } while(--iterations > 0);
+            for (var i = 0, len = array.length >>> 0; i < len; i++) {
+                callback.call(context, array[i], i, array);
+            }
+        },
 
-            return arr;
+        /**
+         * Alias for backwards compatibility. See forEach
+         *
+         * @method forEach
+         */
+        each: function () {
+            InkArray.forEach.apply(InkArray, [].slice.call(arguments));
+        },
+
+        /**
+         * Run a `map` function for each item in the array. The function will receive each item as argument and its return value will change the corresponding array item.
+         * @method map
+         * @param {Array} array     The array to map over
+         * @param {Function} map    The map function. Will take `(item, index, array)` and `this` will be the `context` argument.
+         * @param {Object} [context]    Object to be `this` in the map function.
+         *
+         * @example
+         *      InkArray.map([1, 2, 3, 4], function (item) {
+         *          return item + 1;
+         *      }); // -> [2, 3, 4, 5]
+         */
+        map: function (array, callback, context) {
+            if (arrayProto.map) {
+                return arrayProto.map.call(array, callback, context);
+            }
+            var mapped = new Array(len);
+            for (var i = 0, len = array.length >>> 0; i < len; i++) {
+                mapped[i] = callback.call(context, array[i], i, array);
+            }
+            return mapped;
+        },
+
+        /**
+         * Run a test function through all the input array. Items which pass the test function (for which the test function returned `true`) are kept in the array. Other items are removed.
+         * @param {Array} array
+         * @param {Function} test       A test function taking `(item, index, array)`
+         * @param {Object} [context]    Object to be `this` in the test function.
+         * @return filtered array
+         *
+         * @example
+         *      InkArray.filter([1, 2, 3, 4, 5], function (val) {
+         *          return val > 2;
+         *      })  // -> [3, 4, 5]
+         */
+        filter: function (array, test, context) {
+            if (arrayProto.filter) {
+                return arrayProto.filter.call(array, test, context);
+            }
+            var filtered = [],
+                val = null;
+            for (var i = 0, len = array.length; i < len; i++) {
+                val = array[i]; // it might be mutated
+                if (test.call(context, val, i, array)) {
+                    filtered.push(val);
+                }
+            }
+            return filtered;
         },
 
         /**
@@ -283,7 +326,7 @@ Ink.createModule('Ink.Util.Array', '1', [], function() {
          *     });
          */
         convert: function(arr) {
-            return Array.prototype.slice.call(arr || [], 0);
+            return arrayProto.slice.call(arr || [], 0);
         },
 
         /**
@@ -341,79 +384,3 @@ Ink.createModule('Ink.Util.Array', '1', [], function() {
 });
 
 
-/*
- *  TODO - INCLUDE THIS ON Ink.Util.Array
- *
-// Production steps of ECMA-262, Edition 5, 15.4.4.18
-// Reference: http://es5.github.com/#x15.4.4.18
-// https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Array/forEach
-if (!Array.prototype.forEach) {
-    Array.prototype.forEach = function forEach(cb, thisArg) {
-        var O, len, T, k, kValue;
-
-        if (this === null || this === undefined) {
-            throw new TypeError('this is null or not defined');
-        }
-
-        O = Object(this);
-        len = O.length >>> 0;
-
-        if ({}.toString.call(cb) !== '[object Function]') {
-            throw new TypeError(cb + ' is not a function');
-        }
-
-        if (thisArg) {
-            T = thisArg;
-        }
-
-        k = 0;
-
-        while (k < len) {
-            if (Object.prototype.hasOwnProperty.call(O, k)) {
-                kValue = O[k];
-                cb.call(T, kValue, k, O);
-            }
-            ++k;
-        }
-    };
-}
-
-
-// Production steps of ECMA-262, Edition 5, 15.4.4.19
-// Reference: http://es5.github.com/#x15.4.4.19
-// https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Array/map
-if (!Array.prototype.map) {
-    Array.prototype.map = function(callback, thisArg) {
-        var T, A, k;
-
-        if (this === null || this === undefined) {
-            new TypeError(" this is null or not defined");
-        }
-
-        var O = Object(this);
-        var len = O.length >>> 0;
-
-        if ({}.toString.call(callback) !== "[object Function]") {
-            throw new TypeError(callback + " is not a function");
-        }
-
-        if (thisArg) {
-            T = thisArg;
-        }
-        A = new Array(len);
-        k = 0;
-
-        while(k < len) {
-            var kValue, mappedValue;
-            if (k in O) {
-                kValue = O[ k ];
-                mappedValue = callback.call(T, kValue, k, O);
-                A[ k ] = mappedValue;
-            }
-            ++k;
-        }
-        return A;
-    };
-}
-
-*/

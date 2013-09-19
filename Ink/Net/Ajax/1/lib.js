@@ -200,7 +200,9 @@ Ink.createModule('Ink.Net.Ajax', '1', [], function() {
 
                     if (this.options.requestHeaders && typeof this.options.requestHeaders === 'object') {
                         for(var headerReqName in this.options.requestHeaders) {
-                            headers[headerReqName] = this.options.requestHeaders[headerReqName];
+                            if (this.options.requestHeaders.hasOwnProperty(headerReqName)) {
+                                headers[headerReqName] = this.options.requestHeaders[headerReqName];
+                            }
                         }
                     }
 

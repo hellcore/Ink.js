@@ -4,6 +4,7 @@
  * @version 1
  */
 Ink.createModule('Ink.Dom.Selector', 1, [], function() {
+    /*jshint forin:false, eqnull:true*/
 	'use strict';
 
     /**
@@ -1939,9 +1940,19 @@ support.detectDuplicates = hasDuplicate;
  * @return {Array} Elements that matched
  */
 
+/**
+ * Returns true iif element matches given selector
+ *
+ * @method matchesSelector
+ * @param {DOMElement} element to test
+ * @param {String}     selector CSS selector to test the element with
+ * @return {Boolean} true iif element matches the CSS selector
+ */
+
 return {
-    select: Sizzle,
-    matches: Sizzle.matches
+    select:          Sizzle,
+    matches:         Sizzle.matches,
+    matchesSelector: Sizzle.matchesSelector
 };
 
 

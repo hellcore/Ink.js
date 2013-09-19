@@ -38,7 +38,9 @@
         /*jshint unused:false */
         if (typeof o !== 'object') { return false; }
         for (var k in o) {
-            return false;
+            if (o.hasOwnProperty(k)) {
+                return false;
+            }
         }
         return true;
     };
@@ -55,11 +57,13 @@
                 if (!o) { continue; }
 
                 for (dep in o.left) {
-                    mod = modules[dep];
-                    if (mod) {
-                        o.args[o.left[dep] ] = mod;
-                        delete o.left[dep];
-                        --o.remaining;
+                    if (o.left.hasOwnProperty(dep)) {
+                        mod = modules[dep];
+                        if (mod) {
+                            o.args[o.left[dep] ] = mod;
+                            delete o.left[dep];
+                            --o.remaining;
+                        }
                     }
                 }
 
@@ -183,15 +187,16 @@
          */
         createModule: function(mod, ver, deps, modFn) { // define
             var cb = function() {
-                /*global console:false */
-
                 //console.log(['createModule(', mod, ', ', ver, ', [', deps.join(', '), '], ', !!modFn, ')'].join(''));
 
+                if (typeof mod !== 'string') {
+                    throw new Error('module name must be a string!');
+                }
 
                 // validate version correctness
                 if (typeof ver === 'number' || (typeof ver === 'string' && ver.length > 0)) {
                 } else {
-                    throw new Error('version must be passed!');
+                    throw new Error('version number missing!');
                 }
 
                 var modAll = [mod, '_', ver].join('');
@@ -281,6 +286,13 @@
                 cb: cbFn
             };
 
+            if (!(typeof deps === 'object' && deps.length !== undefined)) {
+                throw new Error('Dependency list should be an array!');
+            }
+            if (typeof cbFn !== 'function') {
+                throw new Error('Callback should be a function!');
+            }
+
             for (i = 0; i < f; ++i) {
                 dep = deps[i];
                 mod = modules[dep];
@@ -353,6 +365,31 @@
                 var finalArgs = args.concat(innerArgs);
                 return fn.apply(context, finalArgs);
             };
+        },
+
+        /**
+         * Function.prototype.bind alternative for binding class methods
+         *
+         * @function bindMethod
+         * @param {Object}  object
+         * @param {String}  methodName
+         * @return {Function}
+         *  
+         * @example
+         *  // Build a function which calls Ink.Dom.Element.remove on an element.
+         *  var removeMyElem = Ink.bindMethod(Ink.Dom.Element, 'remove', someElement);
+         *
+         *  removeMyElem();  // no arguments, nor Ink.Dom.Element, needed
+         * @example
+         *  // (comparison with using Ink.bind to the same effect).
+         *  // The following two calls are equivalent
+         *
+         *  Ink.bind(this.remove, this, myElem);
+         *  Ink.bindMethod(this, 'remove', myElem);
+         */
+        bindMethod: function (object, methodName) {
+            return this.bind.apply(this,
+                [object[methodName], object].concat([].slice.call(arguments, 2)));
         },
 
         /**

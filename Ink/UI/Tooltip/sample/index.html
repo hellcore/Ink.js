@@ -174,6 +174,23 @@
     <li data-tip-forever="1" data-tip-timeout="3.5">data-tip-forever="1" data-tip-timeout="3.5"</li>
 </ul>
 
+<p>Tooltips cannot exit the screen to the side. Nor above or below.</p>
+
+<p class="push-right"> --&gt;<b class="tooltip">Here</b></p>
+<p><b class="tooltip">Here</b> &lt;-- </p>
+
+<p>&nbsp;</p>
+
+<p class="push-right"> --&gt;<b class="tooltip" data-tip-where=right>Here</b></p>
+<p><b class="tooltip" data-tip-where=left>Here</b> &lt;-- </p>
+
+<p>&nbsp;</p>
+
+<p style="position:fixed;top:-10px">Tooltip on the top of the screen <b class="tooltip" data-tip-where="right">Here</b></p>
+<div style="overflow:hidden">
+    <p style="margin-bottom: -10px">Tooltip on the bottom of the screen <b class="tooltip" data-tip-where="right">Here</b></p>
+</div>
+
 
 <script type="text/javascript">
     Ink.requireModules(['Ink.UI.Tooltip_1'], function (Tooltip) {
